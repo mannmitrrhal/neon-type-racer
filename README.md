@@ -2,7 +2,7 @@
 
 A fast, gamified typing game where **your car accelerates as you type**. Type the quote correctly to floor the throttle, race three AI rivals to the finish line, and level up to face faster competition. Built as a single self-contained HTML file — no installs, no dependencies, works offline.
 
-> 🏁 **Play it live:** _(add your GitHub Pages link here once it's published)_
+> 🏁 **Play it live:** https://mannmitrrhal.github.io/neon-type-racer/
 
 ## ✨ Features
 
