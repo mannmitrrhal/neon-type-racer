@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Neon Type Racer</title>
+<style>
+  :root{
+    --bg:#0a0a14;
+    --panel:rgba(20,20,40,0.55);
+    --text:#e7e9ff;
+    --dim:#6b6f9e;
+    --cyan:#27e6ff;
+    --magenta:#ff3df0;
+    --green:#39ff9e;
+    --yellow:#ffd23d;
+    --orange:#ff9e3d;
+    --red:#ff4d6d;
+    --untyped:#43476f;
+    --font: "SFMono-Regular", ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans);
+    color:var(--text);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(255,61,240,.18), transparent 60%),
+      radial-gradient(1000px 700px at -10% 110%, rgba(39,230,255,.18), transparent 60%),
+      var(--bg);
+    min-height:100%;
+    overflow-x:hidden;
+    display:flex;flex-direction:column;align-items:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:-50%;
+    background:
+      radial-gradient(closest-side, rgba(57,255,158,.08), transparent),
+      radial-gradient(closest-side, rgba(255,61,240,.07), transparent);
+    background-size:60% 60%, 50% 50%;
+    background-position:10% 20%, 80% 70%;
+    background-repeat:no-repeat;
+    animation:drift 22s ease-in-out infinite alternate;
+    z-index:-1;pointer-events:none;
+  }
+  @keyframes drift{to{background-position:30% 60%, 60% 30%}}
+
+  .wrap{width:min(960px,92vw);padding:24px 0 60px;display:flex;flex-direction:column;gap:18px;flex:1}
+
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brand{font-family:var(--font);font-weight:700;font-size:1.45rem;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
+  .brand .bolt{filter:drop-shadow(0 0 8px var(--yellow))}
+  .brand .neon{background:linear-gradient(90deg,var(--cyan),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 22px rgba(39,230,255,.25)}
+
+  .badge{font-family:var(--font);font-size:.8rem;padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:var(--panel);backdrop-filter:blur(6px);display:flex;align-items:center;gap:8px}
+  .badge .lvl{color:var(--yellow);text-shadow:0 0 12px rgba(255,210,61,.5)}
+  .badge b{color:var(--green);text-shadow:0 0 12px rgba(57,255,158,.5)}
+
+  /* controls */
+  .controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+  .group{display:flex;gap:6px;background:var(--panel);border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:6px;backdrop-filter:blur(6px)}
+  .group .lbl{font-size:.7rem;color:var(--dim);align-self:center;padding:0 8px 0 6px;text-transform:uppercase;letter-spacing:1px}
+  .chip{font-family:var(--font);border:none;cursor:pointer;color:var(--dim);background:transparent;padding:7px 14px;border-radius:8px;font-size:.9rem;transition:.18s}
+  .chip:hover{color:var(--text)}
+  .chip.active{color:#05121a;background:linear-gradient(90deg,var(--cyan),var(--green));box-shadow:0 0 18px rgba(39,230,255,.45);font-weight:700}
+  .chip.toggle.active{background:linear-gradient(90deg,var(--magenta),var(--yellow));box-shadow:0 0 18px rgba(255,61,240,.4)}
+
+  /* HUD */
+  .hud{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat{background:var(--panel);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px 16px;backdrop-filter:blur(6px)}
+  .stat .k{font-size:.66rem;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px}
+  .stat .v{font-family:var(--font);font-size:1.8rem;font-weight:700;line-height:1.1;margin-top:3px}
+  .stat .u{font-size:.62rem;color:var(--dim);font-family:var(--font);letter-spacing:1px}
+  .stat.wpm .v{color:var(--cyan);text-shadow:0 0 16px rgba(39,230,255,.4)}
+  .stat.acc .v{color:var(--green);text-shadow:0 0 16px rgba(57,255,158,.35)}
+  .stat.pos .v{color:var(--yellow);text-shadow:0 0 16px rgba(255,210,61,.4)}
+  .stat.combo .v{color:var(--magenta);text-shadow:0 0 16px rgba(255,61,240,.4)}
+  .meter{height:4px;border-radius:2px;background:rgba(255,255,255,.08);margin-top:8px;overflow:hidden}
+  .meter > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--magenta),var(--yellow));transition:width .15s}
+
+  /* race track */
+  .track{position:relative;background:linear-gradient(180deg,rgba(8,8,22,.7),rgba(18,18,42,.55));border:1px solid rgba(255,255,255,.10);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;overflow:hidden;backdrop-filter:blur(6px)}
+  .lane{position:relative;height:30px;border-radius:8px;background:rgba(255,255,255,.025);border:1px dashed rgba(255,255,255,.07)}
+  .lane.me{background:rgba(39,230,255,.07);border:1px dashed rgba(39,230,255,.30)}
+  .lane .label{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--font);font-size:.6rem;color:var(--dim);z-index:2;letter-spacing:1px;white-space:nowrap;pointer-events:none}
+  .lane.me .label{color:var(--cyan)}
+  .lane .label b{color:var(--text)}
+  .finish{position:absolute;top:7px;bottom:7px;right:4%;width:9px;border-radius:2px;background:repeating-conic-gradient(#fff 0% 25%,#15151f 0% 50%) 0/9px 9px;opacity:.8;z-index:1}
+  .finish .flag{position:absolute;top:-17px;left:-3px;font-size:.95rem;filter:drop-shadow(0 0 6px var(--yellow))}
+
+  .car{position:absolute;top:50%;left:3%;transform:translate(-50%,-50%);z-index:3;will-change:left;transition:left .14s linear;pointer-events:none;color:var(--cyan)}
+  .car .glyph{display:inline-block;font-size:1.2rem;line-height:1;transform:scaleX(-1);filter:drop-shadow(0 0 5px currentColor)}
+  .car.me .glyph{font-size:1.5rem}
+  .car .trail{position:absolute;right:58%;top:50%;transform:translateY(-50%);height:5px;width:var(--trail,0px);background:linear-gradient(90deg,transparent,currentColor);opacity:var(--spd,0);border-radius:3px;filter:blur(1px)}
+  .car.b0{color:var(--magenta)} .car.b1{color:var(--green)} .car.b2{color:var(--orange)}
+  .car.fast .glyph{animation:vibe .12s linear infinite}
+  @keyframes vibe{0%,100%{transform:scaleX(-1) translateY(0)}50%{transform:scaleX(-1) translateY(-1.5px)}}
+
+  .toast{position:absolute;top:8px;left:50%;transform:translateX(-50%) translateY(-8px);background:rgba(10,10,25,.9);border:1px solid rgba(255,255,255,.14);color:var(--text);font-family:var(--font);font-size:.75rem;padding:5px 12px;border-radius:999px;opacity:0;transition:.25s;z-index:6;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* typing stage */
+  .stage{position:relative;background:var(--panel);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:26px 32px;backdrop-filter:blur(8px);min-height:160px}
+  .stage.shake{animation:shake .22s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  #words{font-family:var(--font);font-size:1.6rem;line-height:2.0;letter-spacing:.5px;height:6.0em;overflow:hidden;position:relative;user-select:none}
+  .word{display:inline-block;margin-right:.55em}
+  .word .ch{position:relative;color:var(--untyped);transition:color .05s}
+  .ch.correct{color:var(--text)}
+  .ch.correct.boost{color:var(--green);text-shadow:0 0 10px rgba(57,255,158,.5)}
+  .ch.wrong{color:var(--red);text-shadow:0 0 10px rgba(255,77,109,.55)}
+  .ch.wrong.space{background:rgba(255,77,109,.25);border-radius:3px}
+  .ch.cursor::before{content:"";position:absolute;left:-2px;top:.05em;width:2px;height:1.25em;background:var(--cyan);box-shadow:0 0 10px var(--cyan),0 0 20px var(--cyan);animation:blink 1s steps(2,start) infinite;border-radius:2px}
+  @keyframes blink{50%{opacity:0}}
+  .stage.blur #words{filter:blur(4px);opacity:.5;transition:.2s}
+  .focuswarn{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-family:var(--font);color:var(--cyan);cursor:pointer;font-size:1rem;letter-spacing:1px}
+  .stage.blur .focuswarn{display:flex}
+  #hidden-input{position:absolute;opacity:0;pointer-events:none;left:-9999px}
+
+  .hint{text-align:center;color:var(--dim);font-size:.8rem;font-family:var(--font);letter-spacing:1px}
+  .hint kbd{font-family:var(--font);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-bottom-width:2px;border-radius:5px;padding:1px 7px;color:var(--text);margin:0 2px}
+
+  footer.bests{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-family:var(--font);font-size:.78rem;color:var(--dim)}
+  footer.bests span b{color:var(--text)}
+
+  /* results */
+  .overlay{position:fixed;inset:0;background:rgba(5,5,15,.78);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;animation:fade .25s}
+  .overlay.show{display:flex}
+  @keyframes fade{from{opacity:0}}
+  .card{width:min(580px,94vw);background:linear-gradient(160deg,rgba(30,30,60,.92),rgba(15,15,35,.96));border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:28px 30px;box-shadow:0 0 60px rgba(39,230,255,.15),0 0 100px rgba(255,61,240,.1);animation:pop .35s cubic-bezier(.2,.9,.3,1.3)}
+  @keyframes pop{from{transform:scale(.9) translateY(10px);opacity:0}}
+  .card h2{font-family:var(--font);font-size:1.7rem;text-align:center;margin-bottom:2px;background:linear-gradient(90deg,var(--cyan),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .card .sub{text-align:center;color:var(--dim);font-size:.85rem;margin-bottom:16px;font-family:var(--font)}
+  .levelup{text-align:center;font-family:var(--font);font-weight:700;color:#05121a;background:linear-gradient(90deg,var(--green),var(--yellow));padding:8px;border-radius:10px;margin-bottom:14px;box-shadow:0 0 24px rgba(57,255,158,.4);animation:glowpulse 1.4s ease-in-out infinite}
+  @keyframes glowpulse{50%{box-shadow:0 0 36px rgba(255,210,61,.6)}}
+
+  .leaderboard{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .lrow{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:8px 12px;font-family:var(--font)}
+  .lrow.me{background:rgba(39,230,255,.10);border-color:rgba(39,230,255,.3)}
+  .lrow .medal{width:26px;text-align:center;font-size:1rem}
+  .lrow .nm{flex:1;font-size:.9rem}
+  .lrow .nm small{color:var(--dim)}
+  .lrow .sp{font-weight:700;color:var(--cyan)}
+  .lrow .sp small{color:var(--dim);font-weight:400}
+
+  .res-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+  .res{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
+  .res .k{font-size:.62rem;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px}
+  .res .v{font-family:var(--font);font-size:1.5rem;font-weight:700;margin-top:2px}
+  .res .v.c1{color:var(--cyan)} .res .v.c2{color:var(--green)} .res .v.c3{color:var(--magenta)} .res .v.c4{color:var(--yellow)}
+  .res small{color:var(--dim);font-size:.66rem;font-family:var(--sans)}
+  .res small.up{color:var(--green)}
+
+  .weakkeys{font-family:var(--font);font-size:.82rem;color:var(--dim);text-align:center;margin-bottom:16px;min-height:1.2em}
+  .weakkeys .key{display:inline-block;background:rgba(255,77,109,.18);color:var(--red);border:1px solid rgba(255,77,109,.35);border-radius:6px;padding:1px 9px;margin:0 3px;font-weight:700}
+  .actions{display:flex;gap:12px}
+  .btn{flex:1;cursor:pointer;font-family:var(--font);font-weight:700;font-size:1rem;padding:14px;border-radius:12px;border:none;color:#05121a;background:linear-gradient(90deg,var(--cyan),var(--green));box-shadow:0 0 22px rgba(39,230,255,.4);transition:.15s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 0 30px rgba(57,255,158,.6)}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--text);box-shadow:none}
+  .btn.ghost:hover{box-shadow:0 0 18px rgba(255,255,255,.1)}
+
+  @media(max-width:640px){
+    .hud{grid-template-columns:repeat(2,1fr)}
+    #words{font-size:1.3rem}
+    .brand{font-size:1.1rem}
+    .res-grid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="bolt">⚡</span><span class="neon">Neon Type Racer</span></div>
+    <div class="badge"><span class="lvl">Level <b id="levelNum">1</b></span> · <span id="tierName">Rookie</span> · 🏆 <b id="winBadge">0</b></div>
+  </header>
+
+  <div class="controls">
+    <div class="group" id="distGroup">
+      <span class="lbl">Race</span>
+      <button class="chip" data-dist="1">sprint</button>
+      <button class="chip active" data-dist="2">rally</button>
+      <button class="chip" data-dist="3">marathon</button>
+    </div>
+    <div class="group">
+      <span class="lbl">Audio</span>
+      <button class="chip toggle" id="soundBtn" data-opt="sound">engine</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="stat wpm"><div class="k">Speed</div><div class="v" id="wpm">0</div><div class="u">wpm</div></div>
+    <div class="stat acc"><div class="k">Accuracy</div><div class="v" id="acc">100%</div><div class="u">clean driving</div></div>
+    <div class="stat pos"><div class="k">Position</div><div class="v" id="pos">1st</div><div class="u">of 4</div></div>
+    <div class="stat combo"><div class="k">Combo</div><div class="v" id="combo">×1</div><div class="meter"><i id="comboMeter"></i></div></div>
+  </div>
+
+  <div class="track" id="track">
+    <div class="toast" id="toast"></div>
+    <div class="lane me">
+      <span class="label">🏎️ <b>YOU</b></span>
+      <div class="car me" id="carPlayer"><i class="trail"></i><span class="glyph">🏎️</span></div>
+    </div>
+    <div class="lane">
+      <span class="label" id="lbl0"></span>
+      <div class="car b0" id="car0"><i class="trail"></i><span class="glyph">🚗</span></div>
+    </div>
+    <div class="lane">
+      <span class="label" id="lbl1"></span>
+      <div class="car b1" id="car1"><i class="trail"></i><span class="glyph">🚙</span></div>
+    </div>
+    <div class="lane">
+      <span class="label" id="lbl2"></span>
+      <div class="car b2" id="car2"><i class="trail"></i><span class="glyph">🚕</span></div>
+    </div>
+    <div class="finish"><span class="flag">🏁</span></div>
+  </div>
+
+  <div class="stage blur" id="stage">
+    <div id="words"></div>
+    <div class="focuswarn" id="focuswarn">⌨ click or press any key to start your engine</div>
+    <input id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+
+  <div class="hint">
+    type the quote — every correct key floors the accelerator · wrong keys stall you · <kbd>Esc</kbd> new race
+  </div>
+
+  <footer class="bests">
+    <span>🚀 top speed <b id="bestWpm">0</b> wpm</span>
+    <span>🏆 wins <b id="winCount">0</b></span>
+    <span>🏁 races <b id="raceCount">0</b></span>
+    <span>⚡ best combo <b id="bestCombo">×1</b></span>
+  </footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <h2 id="resTitle">Race Complete</h2>
+    <div class="sub" id="resSub"></div>
+    <div class="levelup" id="levelUp" style="display:none"></div>
+    <div class="leaderboard" id="leaderboard"></div>
+    <div class="res-grid">
+      <div class="res"><div class="k">Your Speed</div><div class="v c1" id="rWpm">0</div><small id="rWpmDelta"></small></div>
+      <div class="res"><div class="k">Accuracy</div><div class="v c2" id="rAcc">0%</div></div>
+      <div class="res"><div class="k">Best Combo</div><div class="v c3" id="rCombo">×1</div></div>
+    </div>
+    <div class="weakkeys" id="weakKeys"></div>
+    <div class="actions">
+      <button class="btn" id="againBtn">🏁 Race Again</button>
+      <button class="btn ghost" id="closeBtn">Change Settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+  // ---------- quote bank ----------
+  const QUOTES = [
+    "The only way to do great work is to love what you do.",
+    "In the middle of difficulty lies opportunity.",
+    "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+    "The future belongs to those who believe in the beauty of their dreams.",
+    "It does not matter how slowly you go as long as you do not stop.",
+    "Believe you can and you're halfway there.",
+    "The journey of a thousand miles begins with a single step.",
+    "Whether you think you can or you think you can't, you're right.",
+    "Life is what happens when you're busy making other plans.",
+    "The greatest glory in living lies not in never falling, but in rising every time we fall.",
+    "Be yourself; everyone else is already taken.",
+    "We are what we repeatedly do. Excellence, then, is not an act, but a habit.",
+    "The only thing we have to fear is fear itself.",
+    "Imagination is more important than knowledge.",
+    "I have not failed. I've just found ten thousand ways that won't work.",
+    "The best time to plant a tree was twenty years ago. The second best time is now.",
+    "Happiness is not something ready made. It comes from your own actions.",
+    "Keep your face always toward the sunshine, and shadows will fall behind you.",
+    "Hardships often prepare ordinary people for an extraordinary destiny.",
+    "What you get by achieving your goals is not as important as what you become.",
+    "The mind is everything. What you think you become.",
+    "Simplicity is the ultimate sophistication.",
+    "First, solve the problem. Then, write the code.",
+    "Programs must be written for people to read, and only incidentally for machines to execute.",
+    "Code is like humor. When you have to explain it, it's bad.",
+    "Quality is not an act, it is a habit.",
+    "Everything you can imagine is real.",
+    "Stay hungry, stay foolish.",
+    "Action is the foundational key to all success.",
+    "Do one thing every day that scares you."
+  ];
+
+  const BOTS_META = [
+    {name:"NOVA", emoji:"🚗", cls:"b0"},
+    {name:"VOLT", emoji:"🚙", cls:"b1"},
+    {name:"ECHO", emoji:"🚕", cls:"b2"}
+  ];
+
+  // ---------- state ----------
+  const S = {
+    distance:2,
+    opts:{sound:false},
+    raceText:"", targetChars:[], charEls:[], wordEls:[],
+    pos:0, N:0,
+    correct:0, incorrect:0, totalKeys:0, combo:0, comboMax:0, score:0,
+    missMap:{},
+    started:false, running:false, finished:false,
+    startTime:0, liveWpm:0,
+    bots:[], rafId:null
+  };
+
+  // ---------- persistence ----------
+  const LS_KEY = "neonTypeRacer.v1";
+  function loadStore(){ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }catch(e){ return {}; } }
+  function saveStore(o){ try{ localStorage.setItem(LS_KEY, JSON.stringify(o)); }catch(e){} }
+  let store = Object.assign({
+    level:1, bestWpm:0, bestAcc:0, bestCombo:0, races:0, wins:0, streak:0, lastPlayDay:null
+  }, loadStore());
+
+  function tierName(lvl){
+    if(lvl>=16) return "Legend";
+    if(lvl>=11) return "Champion";
+    if(lvl>=7)  return "Pro";
+    if(lvl>=4)  return "Racer";
+    return "Rookie";
+  }
+  // rivals get faster every level
+  function botBase(lvl){ return 14 + lvl*5; }
+
+  // ---------- DOM ----------
+  const $ = id=>document.getElementById(id);
+  const wordsEl=$("words"), stageEl=$("stage"), input=$("hidden-input");
+  const wpmEl=$("wpm"), accEl=$("acc"), posEl=$("pos"), comboEl=$("combo"), comboMeter=$("comboMeter");
+  const carPlayer=$("carPlayer");
+
+  // ---------- sound ----------
+  let audioCtx=null;
+  function beep(freq,dur,type,vol){
+    if(!S.opts.sound) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type=type||"square"; o.frequency.value=freq; g.gain.value=vol||0.04;
+      o.connect(g); g.connect(audioCtx.destination); o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+(dur||0.05));
+      o.stop(audioCtx.currentTime+(dur||0.05));
+    }catch(e){}
+  }
+
+  // ---------- helpers ----------
+  function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+  function pickQuotes(count){
+    const pool=[...QUOTES], chosen=[];
+    for(let i=0;i<count && pool.length;i++){
+      const idx=Math.floor(Math.random()*pool.length);
+      chosen.push(pool.splice(idx,1)[0]);
+    }
+    return chosen.join(" ");
+  }
+  function placeCar(el,frac){ el.style.left = (3 + Math.min(1,frac)*86).toFixed(2)+"%"; }
+  function carSpeed(el,s){ // s 0..1
+    el.style.setProperty("--spd", Math.min(1,s).toFixed(2));
+    el.style.setProperty("--trail", (6 + Math.min(1,s)*48).toFixed(0)+"px");
+    el.classList.toggle("fast", s>0.5);
+  }
+  function showToast(msg){
+    const t=$("toast"); t.textContent=msg; t.classList.add("show");
+    clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1700);
+  }
+
+  // ---------- build the race ----------
+  function buildRace(){
+    S.raceText = pickQuotes(S.distance);
+    const words = S.raceText.split(" ");
+    wordsEl.innerHTML=""; S.targetChars=[]; S.charEls=[]; S.wordEls=[];
+    words.forEach((w,wi)=>{
+      const wEl=document.createElement("span"); wEl.className="word";
+      for(const c of w){
+        const ch=document.createElement("span"); ch.className="ch"; ch.textContent=c;
+        wEl.appendChild(ch); S.charEls.push(ch); S.targetChars.push({char:c});
+      }
+      if(wi<words.length-1){
+        const sp=document.createElement("span"); sp.className="ch"; sp.innerHTML="&nbsp;";
+        wEl.appendChild(sp); S.charEls.push(sp); S.targetChars.push({char:" ", isSpace:true});
+      }
+      wordsEl.appendChild(wEl); S.wordEls.push(wEl);
+    });
+    S.N = S.targetChars.length;
+  }
+
+  function setupBots(){
+    const base=botBase(store.level), offs=[0,5,9];
+    S.bots = BOTS_META.map((m,i)=>{
+      const wpm = Math.max(8, base + offs[i] + (Math.random()*4-2));
+      const el=$("car"+i);
+      $("lbl"+i).innerHTML = m.emoji+" <b>"+m.name+"</b> · "+Math.round(wpm)+"wpm";
+      el.className = "car "+m.cls; // reset 'fast'
+      return {name:m.name, emoji:m.emoji, wpm, el, fraction:0, toasted:false};
+    });
+  }
+
+  function scrollToCursor(){
+    const el=S.charEls[S.pos]; if(!el) return;
+    const lineH=parseFloat(getComputedStyle(wordsEl).lineHeight);
+    wordsEl.scrollTop = Math.max(0, el.offsetTop - lineH);
+  }
+  function renderCursor(){
+    S.charEls.forEach(e=>e.classList.remove("cursor"));
+    const el=S.charEls[S.pos]; if(el) el.classList.add("cursor");
+    scrollToCursor();
+  }
+
+  function reset(){
+    cancelAnimationFrame(S.rafId);
+    S.running=false; S.started=false; S.finished=false;
+    S.pos=0; S.correct=0; S.incorrect=0; S.totalKeys=0;
+    S.combo=0; S.comboMax=0; S.score=0; S.missMap={}; S.liveWpm=0;
+    buildRace(); setupBots(); renderCursor();
+    placeCar(carPlayer,0); carSpeed(carPlayer,0);
+    S.bots.forEach(b=>{ b.fraction=0; b.toasted=false; placeCar(b.el,0); carSpeed(b.el, Math.min(1,b.wpm/120)); });
+    wpmEl.textContent="0"; accEl.textContent="100%"; posEl.textContent="1st";
+    comboEl.textContent="×1"; comboMeter.style.width="0%";
+  }
+
+  // ---------- the race loop (visual + bot motion) ----------
+  function startRace(){
+    S.started=true; S.running=true; S.startTime=performance.now();
+    loop();
+  }
+  function loop(){
+    if(!S.running) return;
+    const elMin=(performance.now()-S.startTime)/60000;
+    const target = elMin>0 ? Math.min(300,(S.correct/5)/elMin) : 0;
+    S.liveWpm += (target - S.liveWpm)*0.15;
+    wpmEl.textContent = Math.max(0,Math.round(S.liveWpm));
+    accEl.textContent = (S.totalKeys?Math.round(S.correct/S.totalKeys*100):100)+"%";
+
+    const pf=S.pos/S.N;
+    placeCar(carPlayer, pf);
+    carSpeed(carPlayer, Math.min(1, S.liveWpm/90));
+
+    let ahead=0;
+    S.bots.forEach(b=>{
+      b.fraction = Math.min(1, (b.wpm*5*elMin)/S.N);
+      placeCar(b.el, b.fraction);
+      if(b.fraction > pf+1e-6) ahead++;
+      if(b.fraction>=1 && !b.toasted){ b.toasted=true; showToast(b.emoji+" "+b.name+" crossed the line!"); beep(200,0.1,"sawtooth",0.04); }
+    });
+    posEl.textContent = ordinal(1+ahead);
+    S.rafId=requestAnimationFrame(loop);
+  }
+
+  // ---------- typing (stall-on-error, TypeRacer style) ----------
+  function handleChar(ch){
+    if(S.finished) return;
+    if(!S.started) startRace();
+    const target=S.targetChars[S.pos]; if(!target) return;
+    const el=S.charEls[S.pos];
+    S.totalKeys++;
+    if(ch===target.char){
+      el.classList.remove("wrong","space"); el.classList.add("correct");
+      S.correct++; S.pos++; S.combo++;
+      if(S.combo>S.comboMax) S.comboMax=S.combo;
+      S.score += 1+Math.floor(S.combo/10);
+      if(S.combo>0 && S.combo%10===0){
+        el.classList.add("boost");
+        beep(660+S.combo,0.08,"triangle",0.05);
+      } else {
+        beep(420+Math.min(300,S.pos),0.025,"square",0.02);
+      }
+      comboEl.textContent="×"+(1+Math.floor(S.combo/10));
+      comboMeter.style.width=Math.min(100,(S.combo%10)*10)+"%";
+      placeCar(carPlayer, S.pos/S.N);
+      renderCursor();
+      if(S.pos>=S.N){ finishRace(); }
+    } else {
+      el.classList.remove("correct","boost"); el.classList.add("wrong");
+      if(target.isSpace) el.classList.add("space");
+      S.incorrect++; S.combo=0;
+      comboEl.textContent="×1"; comboMeter.style.width="0%";
+      const k = target.char===" " ? "␣" : target.char.toLowerCase();
+      S.missMap[k]=(S.missMap[k]||0)+1;
+      stageEl.classList.remove("shake"); void stageEl.offsetWidth; stageEl.classList.add("shake");
+      beep(150,0.08,"sawtooth",0.05);
+    }
+  }
+
+  // ---------- finish + results ----------
+  function finishRace(){
+    if(S.finished) return;
+    S.finished=true; S.running=false;
+    cancelAnimationFrame(S.rafId);
+
+    const elMin=Math.max(1e-6,(performance.now()-S.startTime)/60000);
+    const wpm=Math.min(300, Math.round((S.correct/5)/elMin));
+    const acc=S.totalKeys?Math.round(S.correct/S.totalKeys*100):100;
+    const comboMult=1+Math.floor(S.comboMax/10);
+    placeCar(carPlayer,1);
+
+    // final bot fractions from elapsed time
+    S.bots.forEach(b=>{ b.fraction=Math.min(1,(b.wpm*5*elMin)/S.N); placeCar(b.el,b.fraction); });
+
+    // leaderboard rows (player frac=1)
+    const rows=[{me:true,name:"YOU",emoji:"🏎️",wpm,frac:1}]
+      .concat(S.bots.map(b=>({me:false,name:b.name,emoji:b.emoji,wpm:Math.round(b.wpm),frac:b.fraction})));
+    // higher frac first; on tie, finished bots beat the player (they crossed earlier)
+    rows.sort((a,b)=> (b.frac-a.frac) || ((a.me?1:0)-(b.me?1:0)) || (b.wpm-a.wpm));
+    const place = rows.findIndex(r=>r.me)+1;
+    const won = place===1;
+
+    // ---- progression ----
+    const today=new Date().toISOString().slice(0,10);
+    if(today!==store.lastPlayDay){
+      const yest=new Date(Date.now()-86400000).toISOString().slice(0,10);
+      store.streak=(store.lastPlayDay===yest)?(store.streak+1):1;
+      store.lastPlayDay=today;
+    }
+    store.races=(store.races||0)+1;
+    const newTop = wpm>store.bestWpm;
+    store.bestWpm=Math.max(store.bestWpm,wpm);
+    store.bestAcc=Math.max(store.bestAcc,acc);
+    store.bestCombo=Math.max(store.bestCombo,S.comboMax);
+    let leveled=false;
+    if(won){ store.wins=(store.wins||0)+1; store.level=(store.level||1)+1; leveled=true; }
+    saveStore(store); refreshBadges();
+
+    showResults({wpm,acc,comboMult,rows,place,won,leveled,newTop});
+  }
+
+  function showResults(r){
+    const medals=["🥇","🥈","🥉","4️⃣"];
+    const titles = r.won ? ["🏆 Victory Lap!","🏆 First Place!","🏆 You Won!"]
+                 : r.place===2 ? ["🥈 So close!","🥈 Photo finish!"]
+                 : r.place===3 ? ["🥉 On the podium"]
+                 : ["Back to the pits","Keep racing!"];
+    $("resTitle").textContent=titles[Math.floor(Math.random()*titles.length)];
+    $("resSub").textContent = `Finished ${ordinal(r.place)} of 4 · Level ${store.level-(r.leveled?1:0)} · 🔥 ${store.streak}-day streak`;
+
+    const lu=$("levelUp");
+    if(r.leveled){ lu.style.display="block"; lu.textContent=`⬆ LEVEL UP → ${store.level} — rivals just got faster!`; }
+    else { lu.style.display="block"; lu.textContent=`Level ${store.level} — finish 1st to advance`; lu.style.background="rgba(255,255,255,.06)"; lu.style.color="var(--dim)"; lu.style.boxShadow="none"; lu.style.animation="none"; }
+    if(r.leveled){ lu.style.background=""; lu.style.color=""; lu.style.boxShadow=""; lu.style.animation=""; }
+
+    // leaderboard
+    const lb=$("leaderboard"); lb.innerHTML="";
+    r.rows.forEach((row,i)=>{
+      const div=document.createElement("div");
+      div.className="lrow"+(row.me?" me":"");
+      const status = row.frac>=1 ? "finished" : "did not finish";
+      div.innerHTML = `<span class="medal">${medals[i]||""}</span>`+
+        `<span class="nm">${row.emoji} ${row.me?"<b>YOU</b>":row.name} <small>${row.me?"":("· "+status)}</small></span>`+
+        `<span class="sp">${row.wpm} <small>wpm</small></span>`;
+      lb.appendChild(div);
+    });
+
+    $("rAcc").textContent=r.acc+"%";
+    $("rCombo").textContent="×"+r.comboMult+" ("+S.comboMax+")";
+    const dEl=$("rWpmDelta");
+    if(r.newTop){ dEl.textContent="🚀 new top speed!"; dEl.className="up"; }
+    else { const d=store.bestWpm-r.wpm; dEl.textContent = d===0?"= your top speed":(d+" off your best"); dEl.className=""; }
+
+    const misses=Object.entries(S.missMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    $("weakKeys").innerHTML = misses.length
+      ? "🎯 these keys cost you speed: "+misses.map(m=>`<span class="key">${m[0]}</span>`).join("")
+      : "✨ clean run — no missed keys!";
+
+    countUp($("rWpm"), r.wpm);
+    $("overlay").classList.add("show");
+    if(r.won){ beep(523,0.12,"sine",0.05); setTimeout(()=>beep(784,0.18,"sine",0.05),120); setTimeout(()=>beep(1046,0.22,"sine",0.05),260); }
+    else { beep(330,0.18,"sine",0.05); setTimeout(()=>beep(247,0.25,"sine",0.05),160); }
+  }
+
+  function countUp(el,target){
+    const dur=700, start=performance.now();
+    (function step(t){
+      const p=Math.min(1,(t-start)/dur);
+      el.textContent=Math.round(target*(1-Math.pow(1-p,3)));
+      if(p<1) requestAnimationFrame(step);
+    })(performance.now());
+    // guarantee the final value even if rAF is throttled (e.g. background tab)
+    setTimeout(()=>{ el.textContent=target; }, dur+60);
+  }
+
+  function refreshBadges(){
+    $("levelNum").textContent=store.level;
+    $("tierName").textContent=tierName(store.level);
+    $("winBadge").textContent=store.wins||0;
+    $("bestWpm").textContent=store.bestWpm||0;
+    $("winCount").textContent=store.wins||0;
+    $("raceCount").textContent=store.races||0;
+    $("bestCombo").textContent="×"+(1+Math.floor((store.bestCombo||0)/10));
+  }
+
+  // ---------- input ----------
+  function focusInput(){ input.focus({preventScroll:true}); }
+  stageEl.addEventListener("mousedown",e=>{ e.preventDefault(); focusInput(); });
+  $("focuswarn").addEventListener("click",focusInput);
+  input.addEventListener("focus",()=>stageEl.classList.remove("blur"));
+  input.addEventListener("blur",()=>{ if(!$("overlay").classList.contains("show")) stageEl.classList.add("blur"); });
+
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape" || e.key==="Tab"){ e.preventDefault(); restart(); return; }
+    if($("overlay").classList.contains("show")){ if(e.key==="Enter"){ e.preventDefault(); restart(); } return; }
+    if(e.key==="Backspace"){ e.preventDefault(); return; } // stall model: no backspace needed
+    if(e.key.length===1 && !e.ctrlKey && !e.metaKey && !e.altKey){
+      e.preventDefault(); focusInput(); handleChar(e.key);
+    }
+  });
+
+  function restart(){ $("overlay").classList.remove("show"); reset(); focusInput(); stageEl.classList.remove("blur"); }
+
+  // ---------- controls ----------
+  $("distGroup").addEventListener("click",e=>{
+    const b=e.target.closest("[data-dist]"); if(!b) return;
+    [...$("distGroup").querySelectorAll(".chip")].forEach(c=>c.classList.remove("active"));
+    b.classList.add("active"); S.distance=parseInt(b.dataset.dist,10); reset();
+  });
+  $("soundBtn").addEventListener("click",()=>{
+    S.opts.sound=!S.opts.sound;
+    $("soundBtn").classList.toggle("active",S.opts.sound);
+    if(S.opts.sound) beep(660,0.08,"sine",0.05);
+  });
+  $("againBtn").addEventListener("click",restart);
+  $("closeBtn").addEventListener("click",()=>{ $("overlay").classList.remove("show"); reset(); });
+
+  // ---------- init ----------
+  refreshBadges(); reset();
+  setTimeout(focusInput,100);
+})();
+</script>
+</body>
+</html>
